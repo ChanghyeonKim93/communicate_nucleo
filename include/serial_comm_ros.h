@@ -17,6 +17,8 @@ public:
     ~SerialCommROS();
 
 private:
+    void getParameters();
+
     void run();
 
     void callbackToSend(const std_msgs::UInt16MultiArray::ConstPtr& msg);
@@ -37,6 +39,8 @@ private:
 
 private:
     ros::NodeHandle nh_;
+
+    int loop_frequency_;
 
     std::string topicname_msg_to_send_;
     ros::Subscriber sub_msg_to_send_;
