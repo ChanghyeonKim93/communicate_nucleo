@@ -1,3 +1,6 @@
+
+#include "DigitalOut.h"
+#include "cmsis_os2.h"
 #include "mbed.h"
 #include "platform/mbed_thread.h"
 
@@ -29,8 +32,7 @@ SerialCommunicatorMbed serial(BAUD_RATE);
 char send_buffer[256];
 char recv_buffer[256];
 
-USHORT_UNION pwm_tmp;
-uint16_t pwm_values[8]; 
+volatile uint16_t pwm_values[8]; 
 void ISR_readSerial(){
     int len_recv_message = 0;
     if(serial.tryToReadSerialBuffer()) { // packet ready!
@@ -38,6 +40,7 @@ void ISR_readSerial(){
     }
 
     int idx = 0;
+    USHORT_UNION pwm_tmp;
     for(int i = 0; i < 8; ++i){
         pwm_tmp.bytes_[0] = recv_buffer[idx++];
         pwm_tmp.bytes_[1] = recv_buffer[idx++];
@@ -45,9 +48,12 @@ void ISR_readSerial(){
     }
 
     // change the pwm values.
-    // for(int i = 0; i < len_recv_message; ++i){
-    //     send_buffer[i] = recv_buffer[i];
-    // }
+    for(int i = 0; i < len_recv_message; ++i){
+        send_buffer[i] = recv_buffer[i];
+    }
+
+
+
     // if(serial.writable() && len_recv_message > 0){
     //     int len_send = len_recv_message;
     //     serial.send_withChecksum(recv_buffer, len_send);
@@ -55,12 +61,12 @@ void ISR_readSerial(){
 };
 
 
+
 // PCA9685
 #define I2C1_SDA PB_7
 #define I2C1_SCL PB_6
 
 PCA9685 pca9685_pwm(I2C1_SDA, I2C1_SCL);
-
 
 void setMotorPWM(uint8_t n, uint16_t pwm_ushort){
     if(pwm_ushort > 4095) pwm_ushort = 4095;
@@ -75,6 +81,8 @@ EventQueue equeue(128 * EVENTS_EVENT_SIZE);
 // Timer to know how much time elapses.
 Timer timer;
 
+
+AnalogIn voltage_adc(A0);
 
 int main() {
     // Timer starts.
@@ -91,12 +99,10 @@ int main() {
     pca9685_pwm.begin();
     // pca9685_pwm.setPrescale(64); //This value is decided for 10ms interval.
     pca9685_pwm.frequencyI2C(400000); // 400kHz
-    pca9685_pwm.setPWMFreq(500.0); // Hz
+    pca9685_pwm.setPWMFreq(1000.0); // Hz
 
-    // 
-
-    
     // Loop    
+    int cnt = 0 ;
     while (true) {
 
         std::chrono::microseconds tnow = timer.elapsed_time();       
@@ -106,7 +112,8 @@ int main() {
         tsec.ushort_ = (uint16_t)(us_curr/1000000);
         tusec.uint_  = (uint32_t)(us_curr-((uint32_t)tsec.ushort_)*1000000);
         
-        // Write data if IMU data received
+        // Write data if IMU data received 
+
         if(serial.writable()) {
         }
     
@@ -116,6 +123,16 @@ int main() {
                 setMotorPWM(i,pwm_values[i]);
             }
             equeue.call(ISR_readSerial);
+            ++cnt;
+            if(cnt>5){
+                cnt=0;
+                float voltage_now = voltage_adc;
+                FLOAT_UNION vol_float;
+                vol_float.float_  = voltage_now;
+
+                char v[4] = {vol_float.bytes_[0], vol_float.bytes_[1], vol_float.bytes_[2], vol_float.bytes_[3]};
+                serial.send_withChecksum(v, 4);
+            }
         }
     }
 }

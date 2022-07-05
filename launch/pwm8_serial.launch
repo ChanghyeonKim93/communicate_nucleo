@@ -1,7 +1,7 @@
 <launch>
     <!-- Serial settings-->
-    <arg name="serial_port"           default="/dev/nucleo_l432kc"/>
-    <arg name="baud_rate"             default="921600"/>
+    <arg name="serial_port"           default="/dev/ttyACM0"/>
+    <arg name="baud_rate"             default="460800"/>
 
     <!-- Topicnames & motor control signal publish frequency-->
     <arg name="topicname_pwm"         default="/serial/pwm"/>

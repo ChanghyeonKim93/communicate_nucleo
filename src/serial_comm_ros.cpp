@@ -66,6 +66,10 @@ void SerialCommROS::run(){
 
             // publish the Received message from the Nucleo board.
             for(int i = 0; i < len; ++i) msg_recv_.data.push_back(buf_recv_[i]);
+            FLOAT_UNION voltage_float;
+            for(int i = 0; i < 4; ++i) voltage_float.bytes_[i] = buf_recv_[i];
+
+            std::cout << "VOLTAGE : " << voltage_float.float_ * 3.3f<< " V" << std::endl;
             pub_msg_recv_.publish(msg_recv_);
             msg_recv_.data.clear();
         }
