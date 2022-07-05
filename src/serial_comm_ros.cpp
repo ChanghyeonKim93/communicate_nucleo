@@ -11,11 +11,11 @@ SerialCommROS::SerialCommROS(ros::NodeHandle& nh)
     serial_comm_linux_ = std::make_shared<SerialCommunicatorLinux>(portname_, baudrate_);
     
     // subscriber
-    this->topicname_msg_to_send_ = "msg_to_nucleo";
+    this->topicname_msg_to_send_ = "/msg_to_nucleo";
     sub_msg_to_send_ = nh_.subscribe<std_msgs::Int8MultiArray>(topicname_msg_to_send_, 1, &SerialCommROS::callbackToSend, this);
 
     // publisher
-    this->topicname_msg_recv_ = "msg_recv";
+    this->topicname_msg_recv_ = "/msg_recv";
     pub_msg_recv_ = nh_.advertise<std_msgs::Int8MultiArray>(topicname_msg_recv_,1);
 
     // run
@@ -27,15 +27,17 @@ SerialCommROS::~SerialCommROS(){
 };
 
 void SerialCommROS::run(){
-    ros::Rate rate(100);
+    ros::Rate rate(500);
     while(ros::ok()){
         if(receiveDataReady()) {
             int len = getMessage(buf_recv_);
-            ROS_INFO_STREAM("SerialCommROS - msg recv-len:" << len);
+            // ROS_INFO_STREAM("SerialCommROS - msg recv-len:" << len);
 
             // publish
             for(int i = 0; i < len; ++i) msg_recv_.data.push_back(buf_recv_[i]);
             pub_msg_recv_.publish(msg_recv_);
+
+            msg_recv_.data.resize(0);
         }
 
         ros::spinOnce();
@@ -44,13 +46,13 @@ void SerialCommROS::run(){
 };
 
 void SerialCommROS::callbackToSend(const std_msgs::Int8MultiArray::ConstPtr& msg){
-    ROS_INFO_STREAM("'msg_to_send' recv.\n");
+    // ROS_INFO_STREAM("'msg_to_send' recv.\n");
 
     int len = msg->data.size();
     for(int i = 0; i < len; ++i) buf_send_[i] = msg->data[i];
     
     sendMessage(buf_send_, len);
-    ROS_INFO_STREAM("'msg_to_send' is transmitted to the serial comm.\n");
+    // ROS_INFO_STREAM("'msg_to_send' is transmitted to the serial comm.\n");
 };  
 
 

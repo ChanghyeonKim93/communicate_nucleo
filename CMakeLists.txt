@@ -34,3 +34,8 @@ include_directories( ${Eigen_INCLUDE_DIRS} )
 # executables
 add_executable(serial_node src/main.cpp ${SRC})
 target_link_libraries (serial_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+
+
+add_executable(test_publisher src/test_publisher.cpp ${SRC})
+target_link_libraries (test_publisher ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+
