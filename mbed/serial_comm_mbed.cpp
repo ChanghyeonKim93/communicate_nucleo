@@ -1,69 +1,106 @@
 #include "serial_comm_mbed.h"
 
 SerialCommunicatorMbed::SerialCommunicatorMbed(int baud_rate)
-: pc(USBTX,USBRX),
- led_recv(LED1)
+: buffered_serial_(USBTX,USBRX), recv_led_(LED1), recv_signal_(D12)
 {
     //Serial baud rate
-    pc.set_baud(baud_rate);
+    buffered_serial_.set_baud(baud_rate);
+    
+    flagSTXFound = false;
+    flagCTXFound = false;
+
+    idx_packet_ = 0;
+
+    cnt_read_success_ = 0;
+    cnt_read_fail_    = 0;
+
+    len_message_read_ = 0;
+    len_message_send_ = 0;
 };
 
-uint8_t SerialCommunicatorMbed::stringChecksum(const uint8_t* s, int idx_start, int idx_end) {
-  uint8_t c = 0;
+char SerialCommunicatorMbed::stringChecksum(const char* s, int idx_start, int idx_end) {
+  char c = 0;
   for(int i = idx_start; i <= idx_end; ++i) c ^= s[i];
   return c;
 };
 
-void SerialCommunicatorMbed::send_withChecksum(const uint8_t* data, int len){
-    uint8_t crc = stringChecksum(data, 0, len-1);
+void SerialCommunicatorMbed::send_withChecksum(const char* data, int len){
+    char crc = stringChecksum(data, 0, len-1);
 
-    send_buf_[0] = STX_;
-    send_buf_[1] = (uint8_t)len;
-    for(int i = 0; i < len; ++i) send_buf_[2+i] = data[i];
-    send_buf_[len+2] = crc;
-    send_buf_[len+3] = ETX_;
+    buf_send_[0] = STX_;
+    buf_send_[1] = (char)len;
+    for(int i = 0; i < len; ++i) buf_send_[2+i] = data[i];
+    buf_send_[len+2] = CTX_;
+    buf_send_[len+3] = crc;
+    buf_send_[len+4] = ETX_;
 
-    pc.write(send_buf_, len+4);
+    buffered_serial_.write(buf_send_, len+5);
 };
 
 void SerialCommunicatorMbed::send_withoutChecksum(const char* data, int len){
-    pc.write(data, len);
+    buffered_serial_.write(data, len);
 };
 
-int SerialCommunicatorMbed::read_withChecksum(uint8_t* msg){
-    bool len_msg = 0;
-    if(pc.readable()){
-        int i = 0;
-        led_recv = true;
-        int len_read = pc.read((void*)read_buf_, READ_BUFFER_SIZE);
-        if(len_read > 0){
-            for(i = 0; i < len_read; ++i) {
-                if(read_buf_[i] == ETX_) {
-                    if(serial_stack_[0] == STX_) {
-                        // CRC is calculated including len.
-                        len_msg = (int)serial_stack_[1];
-                        uint8_t check_sum = stringChecksum(serial_stack_, 2, len_msg + 1); 
-                        if(serial_stack_[len_msg+2] == check_sum){
-                            // successfully data received
-                            ++seq;
-                            for(int j = 0; j < len_msg; ++j) msg[j] = serial_stack_[j+2];
-                        }
+
+bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
+    bool packet_ready = false;
+    if(buffered_serial_.readable()) { // data recved.
+        uint32_t len_read = buffered_serial_.read((void*)buf_read_, BUF_SIZE);       
+        if(len_read > 0) { // There is data.
+            for(int i = 0; i < len_read; ++i) {
+                char current_ascii = buf_read_[i];
+
+                if(current_ascii == STX_){
+                    flagSTXFound = true;
+                    idx_packet_ = 0; // reset stack
+                    buf_packet_[idx_packet_++] = current_ascii;
+                }
+                else if(flagSTXFound && current_ascii == CTX_){
+                    flagCTXFound = true;
+                    buf_packet_[idx_packet_++] = current_ascii;
+                }
+                else if(flagCTXFound && current_ascii == ETX_){ // 'ETX', data part : buf_packet_[1] ~ buf_packet_[]
+                    flagCTXFound = false;
+                    flagSTXFound = false;
+                    buf_packet_[idx_packet_] = current_ascii;
+                    idx_packet_ = 0;
+                    
+                    uint32_t len_message = (uint32_t)buf_packet_[1];
+                    char crc_recv = buf_packet_[len_message + 3];
+                    char crc_calc = stringChecksum(buf_packet_, 2, len_message + 1);
+                    if(crc_calc == crc_recv) { // 'Checksum test' PASS, MESSAGE SUCCESSFULLY RECEIVED.
+                        recv_signal_ = true;
+                    
+                        ++seq_recv_;
+                        ++cnt_read_success_;
+
+                        // fill the packet.
+                        len_message_read_ = len_message;
+                        for(int j = 0; j < len_message_read_; ++j) 
+                            message_read_[j] = buf_packet_[j+2];
+                        
+                        packet_ready = true;
+                        recv_signal_ = false;
                     }
-                    stack_len_ = 0;
+                    else ++cnt_read_fail_;
+                    // "______________________CRC FAILED: failed / seq : " << cnt_failed <<"/"<<seq_recv_<<"!\n\n";
                 }
-                else { // stack
-                    serial_stack_[stack_len_++] = read_buf_[i];
-                }
+                else{
+                    buf_packet_[idx_packet_++] = current_ascii;
+                }    
             }
         }
-        led_recv = false;
     }
-    return len_msg;
-}; 
 
-bool SerialCommunicatorMbed::writable(){
-    return pc.writable();
+    return packet_ready;
 };
-bool SerialCommunicatorMbed::readable(){
-    return pc.readable();
+
+int SerialCommunicatorMbed::getReceivedMessage(char* msg){
+    for(int i = 0; i < len_message_read_; ++i){
+        msg[i] = message_read_[i];
+    }
+    return len_message_read_;
 };
+
+bool SerialCommunicatorMbed::writable() { return buffered_serial_.writable(); };
+bool SerialCommunicatorMbed::readable() { return buffered_serial_.readable(); };

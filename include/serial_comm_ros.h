@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 
 #include <std_msgs/Int8MultiArray.h>
+#include <std_msgs/UInt16MultiArray.h>
 
 #include "serial_comm_linux.h"
 
@@ -18,12 +19,13 @@ public:
 private:
     void run();
 
-    void callbackToSend(const std_msgs::Int8MultiArray::ConstPtr& msg);
+    void callbackToSend(const std_msgs::UInt16MultiArray::ConstPtr& msg);
     
     bool receiveDataReady();
     int  getMessage(char* data);
 
     void sendMessage(char* data, int len);
+    int fill16bitsTo8bits(const std_msgs::UInt16MultiArray::ConstPtr& msg, char* buf_send);
 
 private:
     std::shared_ptr<SerialCommunicatorLinux> serial_comm_linux_;
@@ -38,7 +40,7 @@ private:
 
     std::string topicname_msg_to_send_;
     ros::Subscriber sub_msg_to_send_;
-    std_msgs::Int8MultiArray msg_to_send_;
+    std_msgs::UInt16MultiArray msg_to_send_;
 
 
     std::string topicname_msg_recv_;

@@ -13,7 +13,6 @@
 #include <iomanip>
 #include <numeric>
 
-
 // serial
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +25,8 @@
 
 #include <sys/ioctl.h>
 #include <linux/serial.h>
+
+#include "union_struct.h"
 
 using namespace std::chrono_literals;
 

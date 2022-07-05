@@ -3,7 +3,7 @@
 
 #include "mbed.h"
 
-#define READ_BUFFER_SIZE 256
+#define BUF_SIZE 1024
 
 enum MSG_TYPE{
     MCU_TO_PC = 1,
@@ -12,44 +12,55 @@ enum MSG_TYPE{
 
 class SerialCommunicatorMbed{
 private:
-    // packet structure
-    // $ L d[0] d[1] ... d[L-1] CRC %
+    BufferedSerial buffered_serial_;
 
-    // $   : start bytes
-    // L   : length
-    // CRC : checksum.
-    // %   : end bytes
-    // total overhead per meesage: 4 bytes
-    unsigned char STX_     = '$';
-    unsigned char ETX_     = '%';
-    unsigned char MSG_LEN_ = 0;
+    char STX_     = '$';
+    char ETX_     = '%';
+    char CTX_     = '*';
 
-    BufferedSerial pc;
+    bool flagSTXFound;
+    bool flagCTXFound;
 
     // Related to serial read
-    int stack_len_ = 0;
-    unsigned char serial_stack_[READ_BUFFER_SIZE];
+    char buf_packet_[BUF_SIZE];
+    uint32_t idx_packet_;
 
-    unsigned char read_buf_[READ_BUFFER_SIZE];
-    unsigned char send_buf_[READ_BUFFER_SIZE];
+    uint32_t cnt_read_success_;
+    uint32_t cnt_read_fail_;
 
-    uint64_t seq = 0;
+    char buf_read_[BUF_SIZE];
+    char buf_send_[BUF_SIZE];
 
-    // Initialise the digital pin LED1 as an output
-    DigitalOut led_recv;
+private:
+    char message_read_[BUF_SIZE];
+    uint32_t len_message_read_;
+
+    char message_send_[BUF_SIZE];
+    uint32_t len_message_send_;
+
+    uint32_t seq_recv_ = 0;
+    uint32_t seq_send_ = 0;
+
+    uint32_t seq = 0;
+
+    DigitalOut recv_led_;
+    DigitalOut recv_signal_;
 
 public:
     SerialCommunicatorMbed(int baud_rate);
     
-    void send_withChecksum(const uint8_t* data, int len);
+    void send_withChecksum(const char* data, int len);
     void send_withoutChecksum(const char* data, int len);
-    int read_withChecksum(uint8_t* msg);
+
+    bool tryToReadSerialBuffer();
 
     bool readable();
     bool writable();
 
+    int getReceivedMessage(char* msg);
+
 private:
-    uint8_t stringChecksum(const uint8_t* s, int idx_start, int idx_end);
+    char stringChecksum(const char* s, int idx_start, int idx_end);
 };
 
 #endif

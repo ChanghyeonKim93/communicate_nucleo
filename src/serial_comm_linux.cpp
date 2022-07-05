@@ -44,10 +44,16 @@ SerialCommunicatorLinux::~SerialCommunicatorLinux() {
     std::cout << "SerialCommunicatorLinux - terminate signal on...\n";
     this->terminate_promise_.set_value();
 
+    // wait for TX & RX threads to terminate ...
+    std::this_thread::sleep_for(1s);
+
     if(this->thread_rx_.joinable()) this->thread_rx_.join();
     std::cout << "thread RX join.";
     if(this->thread_tx_.joinable()) this->thread_tx_.join();
     std::cout << "thread TX join.";
+
+    // Close the serial port.
+    this->closeSerialPort();
 };
 
 bool SerialCommunicatorLinux::isReceiveReady(){
