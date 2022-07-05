@@ -91,7 +91,7 @@ int main() {
     pca9685_pwm.begin();
     // pca9685_pwm.setPrescale(64); //This value is decided for 10ms interval.
     pca9685_pwm.frequencyI2C(400000); // 400kHz
-    pca9685_pwm.setPWMFreq(1000.0); // Hz
+    pca9685_pwm.setPWMFreq(500.0); // Hz
 
     // 
 
