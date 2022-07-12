@@ -186,6 +186,7 @@ void SerialCommunicatorLinux::openSerialPort(){
 };
 
 void SerialCommunicatorLinux::closeSerialPort(){
+    std::cout << "Close the serial port...";
     close(fd_);
 };
 
@@ -283,7 +284,23 @@ void SerialCommunicatorLinux::processTX(std::shared_future<void> terminate_signa
 
         // std::this_thread::sleep_for(5ms);
         std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(5000));
-        if (terminate_status == std::future_status::ready) break;
+        if (terminate_status == std::future_status::ready) {
+            USHORT_UNION data_union;
+            len_send_ = 16;
+            for(int i = 0; i < len_send_; ++i) {
+                data_union.ushort_ = (unsigned short)0;
+                buf_send_[2*i]   = data_union.bytes_[0];
+                buf_send_[2*i+1] = data_union.bytes_[1];
+            }
+            send_withChecksum(buf_send_, len_send_);
+            len_send_ = 0;
+            std::cout << "send the last message... :\n";
+            for(int i = 0 ; i < 16; ++i){
+                std::cout << buf_send_[i] << " ";
+            }
+            std::cout << std::endl;
+            break;
+        }
     }
     std::cout << "   PROCESS TX receives terminate signal.\n";
 };
