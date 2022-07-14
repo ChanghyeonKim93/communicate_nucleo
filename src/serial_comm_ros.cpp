@@ -4,8 +4,8 @@ SerialCommROS::SerialCommROS(ros::NodeHandle& nh)
 : nh_(nh){
     ROS_INFO_STREAM("SerialCommROS - starts.");
     portname_ = "/dev/ttyACM0";
-    baudrate_ = 460800;
-    loop_frequency_ = 200;
+    baudrate_ = 921600;
+    loop_frequency_ = 800;
     ROS_INFO_STREAM("Default PORTNANE:  " << portname_);
     ROS_INFO_STREAM("Default baud rate: " << baudrate_);
     ROS_INFO_STREAM("Default frequency: " << loop_frequency_);
@@ -59,7 +59,7 @@ void SerialCommROS::getParameters(){
 };
 
 void SerialCommROS::run(){
-    ros::Rate rate(1000);
+    ros::Rate rate(loop_frequency_);
     while(ros::ok()){
         if(receiveDataReady()) {
             int len = getMessage(buf_recv_);
@@ -69,7 +69,7 @@ void SerialCommROS::run(){
             FLOAT_UNION voltage_float;
             for(int i = 0; i < 4; ++i) voltage_float.bytes_[i] = buf_recv_[i];
 
-            std::cout << "VOLTAGE : " << voltage_float.float_ * 3.3f<< " V" << std::endl;
+            ROS_INFO_STREAM("VOLTAGE : " << voltage_float.float_ * 3.3f<< " V");
             pub_msg_recv_.publish(msg_recv_);
             msg_recv_.data.clear();
         }

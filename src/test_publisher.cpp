@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 
         uint8_t cnt = 0;
 		if(ros::ok()){
-            ros::Rate rate(200);
+            ros::Rate rate(800);
             while(ros::ok()){
                 std_msgs::UInt16MultiArray msg;
                 for(int i = 0; i < 8; ++i){

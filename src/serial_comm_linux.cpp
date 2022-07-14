@@ -283,7 +283,7 @@ void SerialCommunicatorLinux::processTX(std::shared_future<void> terminate_signa
         mutex_tx_->unlock();
 
         // std::this_thread::sleep_for(5ms);
-        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(5000));
+        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(10));
         if (terminate_status == std::future_status::ready) {
             USHORT_UNION data_union;
             len_send_ = 16;
