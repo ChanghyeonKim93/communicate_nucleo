@@ -1,15 +1,12 @@
 #include <iostream>
-#include <string>
-
 #include <ros/ros.h>
-
 #include "serial_comm_ros.h"
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "serial_node");
     ros::NodeHandle nh("~");
 
-    ROS_INFO_STREAM("serial_node - STARTS.");
+    ROS_INFO_STREAM("serial_node - starts.");
 	
 	try{
 		if(ros::ok()) {
@@ -24,6 +21,6 @@ int main(int argc, char **argv) {
         ROS_ERROR(e.what());
 	}
 
-    ROS_INFO_STREAM("serial_node - TERMINATED.");
+    ROS_INFO_STREAM("serial_node - terminated.");
 	return 0;
 }

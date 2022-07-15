@@ -7,7 +7,7 @@
 #include <std_msgs/Int8MultiArray.h>
 #include <std_msgs/UInt16MultiArray.h>
 
-#include "serial_comm_linux.h"
+#include "serial_communicator.h"
 
 #define BUF_SIZE 1024
 
@@ -29,24 +29,27 @@ private:
     void sendMessage(char* data, int len);
     int fill16bitsTo8bits(const std_msgs::UInt16MultiArray::ConstPtr& msg, char* buf_send);
 
+// Serial port related (Boost)
 private:
-    std::shared_ptr<SerialCommunicatorLinux> serial_comm_linux_;
     std::string portname_;
-    int baudrate_;
+    int         baudrate_;
+    std::shared_ptr<SerialCommunicator> serial_communicator_;
 
     char buf_send_[BUF_SIZE];
     char buf_recv_[BUF_SIZE];
 
+// ROS related
 private:
     ros::NodeHandle nh_;
 
     int loop_frequency_;
 
+    // TX messages
     std::string topicname_msg_to_send_;
     ros::Subscriber sub_msg_to_send_;
     std_msgs::UInt16MultiArray msg_to_send_;
 
-
+    // RX messages
     std::string topicname_msg_recv_;
     ros::Publisher pub_msg_recv_;
     std_msgs::Int8MultiArray msg_recv_;

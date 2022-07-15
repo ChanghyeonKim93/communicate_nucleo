@@ -6,6 +6,15 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(catkin REQUIRED cmake_modules)
 find_package(Eigen REQUIRED)
 
+
+SET(Boost_USE_STATIC_LIBS OFF)
+SET(Boost_USE_MULTITHREAD ON)
+FIND_PACKAGE(Boost 1.42.0 REQUIRED COMPONENTS system thread regex)
+IF(Boost_FOUND)
+  INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+  LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
+ENDIF(Boost_FOUND)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -20,7 +29,7 @@ catkin_package(
 set(SRC ${SRC} 
     src/timer.cpp
 
-    src/serial_comm_linux.cpp
+    src/serial_communicator.cpp
     src/serial_comm_ros.cpp
     src/crc16.cpp
 )
@@ -34,7 +43,7 @@ include_directories( ${Eigen_INCLUDE_DIRS} )
 
 # executables
 add_executable(serial_node src/main.cpp ${SRC})
-target_link_libraries (serial_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+target_link_libraries (serial_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_REGEX_LIBRARY})
 
 
 add_executable(test_publisher src/test_publisher.cpp ${SRC})
