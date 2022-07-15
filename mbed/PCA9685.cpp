@@ -61,4 +61,18 @@ void PCA9685::setPWM(uint8_t num, uint16_t on, uint16_t off)
     cmd[3] = off;
     cmd[4] = off >> 8;
     i2c.write(_i2caddr, cmd, 5);
+} 
+void PCA9685::setPWM_01234567(uint16_t duty[8])
+{
+    // char cmd[5];
+    char cmdall[33];
+    cmdall[0] = LED0_ON_L; 
+    for(uint16_t i = 0; i < 8; ++i){
+        uint16_t idx = (i << 2) + 1;
+        cmdall[idx]   = 0;
+        cmdall[++idx] = 0 >> 8;
+        cmdall[++idx] = duty[i];
+        cmdall[++idx] = duty[i] >> 8;
+    }
+    i2c.write(_i2caddr, cmdall, 33);
 }

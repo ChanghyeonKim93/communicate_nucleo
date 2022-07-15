@@ -100,6 +100,10 @@ public:
      *  @param  on: from 0 to 4095 the tick when the signal should pass from low to high
      *  @param off: from 0 to 4095 the tick when the signal should pass from high to low
      */
+    void setPWM_01234567(uint16_t duty[8]);//SetPWM01234567(duty[8])
+    /** Set the start (on) and the end (off) of the part of the PWM pulse of the channel
+     *  @param duty: from 0 to 4095 the tick when the signal should pass from high to low
+     */
 private:
     void write8(uint8_t address, uint8_t data);
     char read8(char address);

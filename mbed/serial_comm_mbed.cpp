@@ -1,10 +1,12 @@
 #include "serial_comm_mbed.h"
+#include "BufferedSerial.h"
 
 SerialCommunicatorMbed::SerialCommunicatorMbed(int baud_rate)
 : buffered_serial_(USBTX,USBRX), recv_led_(LED1), recv_signal_(D12)
 {
     //Serial baud rate
     buffered_serial_.set_baud(baud_rate);
+    buffered_serial_.set_format(8, BufferedSerial::None, 1);
     
     flagSTXFound = false;
     flagCTXFound = false;
@@ -70,7 +72,6 @@ bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
                     char crc_calc = stringChecksum(buf_packet_, 2, len_message + 1);
                     if(crc_calc == crc_recv) { // 'Checksum test' PASS, MESSAGE SUCCESSFULLY RECEIVED.
                         recv_signal_ = true;
-                        recv_led_ = true;
                     
                         ++seq_recv_;
                         ++cnt_read_success_;
@@ -81,7 +82,6 @@ bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
                             message_read_[j] = buf_packet_[j+2];
                         
                         packet_ready = true;
-                        recv_led_ = false;
                         recv_signal_ = false;
                     }
                     else ++cnt_read_fail_;

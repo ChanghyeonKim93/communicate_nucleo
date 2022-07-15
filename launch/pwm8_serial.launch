@@ -6,7 +6,7 @@
     <!-- Topicnames & motor control signal publish frequency-->
     <arg name="topicname_pwm"         default="/serial/pwm"/>
     <arg name="topicname_from_nucleo" default="/serial/from_nucleo"/>
-    <arg name="frequency"             default="500"/> <!-- 200 Hz default-->
+    <arg name="frequency"             default="400"/> <!-- 200 Hz default-->
 
     <node pkg="communicate_nucleo" name="serial_node" type="serial_node" output="screen">
         <param name="serial_port"           type="string" value="$(arg serial_port)"/>

@@ -273,14 +273,14 @@ void SerialCommunicatorLinux::processRX(std::shared_future<void> terminate_signa
 
 void SerialCommunicatorLinux::processTX(std::shared_future<void> terminate_signal){
     while(true){
-        mutex_tx_->lock();
         if(len_send_ > 0){
+            mutex_tx_->lock();
             int len_tmp = len_send_;
             send_withChecksum(buf_send_, len_send_);
-            std::cout << " TX Send:"<< ++seq_send_ <<", length: " << len_tmp << std::endl;
+            std::cout << " TX Send:" << ++seq_send_ << ", length: " << len_tmp << std::endl;
             len_send_ = 0;
+            mutex_tx_->unlock();
         }
-        mutex_tx_->unlock();
 
         // std::this_thread::sleep_for(5ms);
         std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(10));
@@ -289,15 +289,13 @@ void SerialCommunicatorLinux::processTX(std::shared_future<void> terminate_signa
             len_send_ = 16;
             for(int i = 0; i < len_send_; ++i) {
                 data_union.ushort_ = (unsigned short)0;
-                buf_send_[2*i]   = data_union.bytes_[0];
-                buf_send_[2*i+1] = data_union.bytes_[1];
+                buf_send_[2*i]     = data_union.bytes_[0];
+                buf_send_[2*i+1]   = data_union.bytes_[1];
             }
             send_withChecksum(buf_send_, len_send_);
             len_send_ = 0;
             std::cout << "send the last message... :\n";
-            for(int i = 0 ; i < 16; ++i){
-                std::cout << buf_send_[i] << " ";
-            }
+            for(int i = 0 ; i < 16; ++i) std::cout << buf_send_[i] << " ";
             std::cout << std::endl;
             break;
         }
