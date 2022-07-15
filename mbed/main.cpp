@@ -1,6 +1,3 @@
-
-#include "DigitalOut.h"
-#include "cmsis_os2.h"
 #include "mbed.h"
 #include "platform/mbed_thread.h"
 
@@ -8,7 +5,7 @@
 #include "PCA9685.h"
 
 // Parameter settings
-#define BAUD_RATE 460800
+#define BAUD_RATE 921600
 #define I2C_FREQ  400000 // 400 kHz
 
 typedef union USHORT_UNION_{

@@ -27,6 +27,7 @@
 #include <linux/serial.h>
 
 #include "union_struct.h"
+#include "crc16.h"
 
 using namespace std::chrono_literals;
 
@@ -58,6 +59,7 @@ private:
 
 private:
     char stringChecksum(const char* s, int idx_start, int idx_end);
+    unsigned short stringChecksumCRC16_CCITT(const char* s, int idx_start, int idx_end);
 
 
 private:

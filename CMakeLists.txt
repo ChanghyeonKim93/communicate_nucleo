@@ -22,6 +22,7 @@ set(SRC ${SRC}
 
     src/serial_comm_linux.cpp
     src/serial_comm_ros.cpp
+    src/crc16.cpp
 )
 
 set(includeDirs ${includeDirs} ${CMAKE_CURRENT_BINARY_DIR})

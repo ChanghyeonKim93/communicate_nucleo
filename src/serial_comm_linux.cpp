@@ -308,4 +308,8 @@ inline char SerialCommunicatorLinux::stringChecksum(const char* s, int idx_start
     char c = 0;
     for(int i = idx_start; i <= idx_end; ++i) c ^= s[i];
     return c;
+};   
+
+unsigned short SerialCommunicatorLinux::stringChecksumCRC16_CCITT(const char* s, int idx_start, int idx_end){
+    return crc16_ccitt(s,idx_start, idx_end);
 };
