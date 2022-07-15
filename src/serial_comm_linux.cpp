@@ -198,7 +198,7 @@ void SerialCommunicatorLinux::processRX(std::shared_future<void> terminate_signa
     bool flagCTXFound = false;
 
     stack_len_ = 0;
-    int timeout_poll = 500; // ms, -1: nonblock
+    int timeout_poll    = 500; // ms, -1: nonblock
     uint32_t cnt_failed = 0;
     // WHILE LOOP
     while(true) { // polling stage. (when some data is received.)
@@ -207,7 +207,8 @@ void SerialCommunicatorLinux::processRX(std::shared_future<void> terminate_signa
         if (poll_state_ > 0) {
             if (poll_events_.revents & POLLIN) { // event is receiving data.
                 int len_read = read(fd_, buf_read_, 128); // Read serial RX buffer
-                if(len_read > 0){
+                
+                if(len_read > 0) {
                     for(int i = 0; i < len_read; ++i) {
                         char current_ascii = buf_read_[i];
 
@@ -223,6 +224,7 @@ void SerialCommunicatorLinux::processRX(std::shared_future<void> terminate_signa
                         else if(flagCTXFound && current_ascii == ETX_){ // 'ETX', data part : serial_stack_[1] ~ serial_stack_[]
                             flagCTXFound = false;
                             flagSTXFound = false;
+
                             serial_stack_[stack_len_++] = current_ascii;
                             stack_len_ = 0;
                             
@@ -237,7 +239,6 @@ void SerialCommunicatorLinux::processRX(std::shared_future<void> terminate_signa
                                 ++cnt_failed;
                                 std::cout << "______________________CRC FAILED: failed / seq : " << cnt_failed <<"/"<<seq_recv_<<"!\n\n";
                             }
-                            
                         }
                         else{
                             serial_stack_[stack_len_++] = current_ascii;
