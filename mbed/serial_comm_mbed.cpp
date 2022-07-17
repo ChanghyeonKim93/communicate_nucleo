@@ -128,6 +128,12 @@ bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
                             idx_stk_ = 0;
                             signal_etx_ = false;
                         }
+                        else{
+                            // exceptional case
+                            flagStacking = false;
+                            flagDLEFound = false;
+                            idx_stk_ = 0;
+                        }
                     }
                     else{ // DLE not found
                         if(c == DLE){  // DLE found

@@ -249,6 +249,12 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
 
                             idx_stk_ = 0;                  
                         }
+                        else{
+                            // exceptional case
+                            flagStacking = false;
+                            flagDLEFound = false;
+                            idx_stk_ = 0;
+                        }
                     }
                     else { // 이전에 DLE가 발견되지 않았다.
                         if(c == DLE){ // DLE발견
