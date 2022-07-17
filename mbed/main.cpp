@@ -2,7 +2,7 @@
 #include "platform/mbed_thread.h"
 
 #include "serial_comm_mbed.h"
-#include "PCA9685.h"
+#include "drone_motor_pwm.h"
 #include "union_struct.h"
 #include <chrono>
 
@@ -14,10 +14,8 @@ EventQueue event_queue(128 * EVENTS_EVENT_SIZE);
 #define BAUD_RATE 921600
 #define I2C_FREQ  400000 // 400 kHz
 
-#define I2C1_SDA_PCA9685 PB_7
-#define I2C1_SCL_PCA9685 PB_6
-
-#define VOLTAGE_PIN A0
+// Voltage pin
+#define VOLTAGE_PIN PC_5
 
 // Serial
 uint8_t packet_send[256];
@@ -28,12 +26,12 @@ uint16_t pwm_values[8];
 SerialCommunicatorMbed serial(BAUD_RATE);
 
 // PCA9685
-PCA9685 pca9685_pwm(I2C1_SDA_PCA9685, I2C1_SCL_PCA9685);
+DroneMotorPwm motor_pwm;
 
 void setMotorPWM(uint8_t n, uint16_t pwm_ushort){
     if(pwm_ushort > 4095) pwm_ushort = 4095;
     if(pwm_ushort < 0) pwm_ushort = 0;
-    pca9685_pwm.setPWM(n, 0, pwm_ushort);
+    motor_pwm.setPWM(n, pwm_ushort);
 };
 
 void setMotorPWM_01234567(uint16_t pwm_ushort[8]){
@@ -41,14 +39,12 @@ void setMotorPWM_01234567(uint16_t pwm_ushort[8]){
         if(pwm_ushort[i] < 0 ) pwm_ushort[i] = 0;
         if(pwm_ushort[i] > 4095) pwm_ushort[i] = 4095;
     }
-    pca9685_pwm.setPWM_01234567(pwm_ushort);
+    motor_pwm.setPWM_all(pwm_ushort);
 };
 
 // Voltage reader                
-FLOAT_UNION vol_float;
+USHORT_UNION vol_ushort;
 AnalogIn voltage_adc(VOLTAGE_PIN);
-
-
 
 // Define ISR functions
 void ISR_readSerial(){
@@ -56,24 +52,46 @@ void ISR_readSerial(){
         int len_recv_message = 0;
         len_recv_message = serial.getReceivedMessage(packet_recv); 
 
-        if( len_recv_message > 0 ) { // Successfully received the packet.
+        if( len_recv_message == 16 ) { // Successfully received the packet.
             USHORT_UNION pwm_tmp;
-            int idx = 0;
-            for(int i = 0; i < 8; ++i) {
-                pwm_tmp.bytes_[0] = packet_recv[idx++];
-                pwm_tmp.bytes_[1] = packet_recv[idx++];
-                pwm_values[i]     = pwm_tmp.ushort_;
-            }
+            
+            pwm_tmp.bytes_[0] = packet_recv[0]; pwm_tmp.bytes_[1] = packet_recv[1];
+            pwm_values[0]     = pwm_tmp.ushort_;
+
+            pwm_tmp.bytes_[0] = packet_recv[2]; pwm_tmp.bytes_[1] = packet_recv[3];
+            pwm_values[1]     = pwm_tmp.ushort_;
+    
+            pwm_tmp.bytes_[0] = packet_recv[4]; pwm_tmp.bytes_[1] = packet_recv[5];
+            pwm_values[2]     = pwm_tmp.ushort_;
+
+            pwm_tmp.bytes_[0] = packet_recv[6]; pwm_tmp.bytes_[1] = packet_recv[7];
+            pwm_values[3]     = pwm_tmp.ushort_;
+
+            pwm_tmp.bytes_[0] = packet_recv[8]; pwm_tmp.bytes_[1] = packet_recv[9];
+            pwm_values[4]     = pwm_tmp.ushort_;
+
+            pwm_tmp.bytes_[0] = packet_recv[10]; pwm_tmp.bytes_[1] = packet_recv[11];
+            pwm_values[5]     = pwm_tmp.ushort_;
+
+            pwm_tmp.bytes_[0] = packet_recv[12]; pwm_tmp.bytes_[1] = packet_recv[13];
+            pwm_values[6]     = pwm_tmp.ushort_;
+
+            pwm_tmp.bytes_[0] = packet_recv[14]; pwm_tmp.bytes_[1] = packet_recv[15];
+            pwm_values[7]     = pwm_tmp.ushort_;
+
             setMotorPWM_01234567(pwm_values);           
         }
     }
 };
 
+void ISR_sendSerialVoltage(){
+    vol_ushort.ushort_ = voltage_adc.read_u16(); // Read Analog voltage data (A0 pin, AnalogIn)
+    serial.send_withChecksum(vol_ushort.bytes_, 2);
+};
 
 
 // Timer to know how much time elapses.
 Timer timer;
-
 
 int main() {
     // Timer starts.
@@ -82,42 +100,31 @@ int main() {
     std::chrono::microseconds time_recv_prev = timer.elapsed_time();
     std::chrono::microseconds time_curr;
 
-    uint64_t us_curr;
-    USHORT_UNION tsec;
-    UINT_UNION   tusec;
-
     // Start the event queue
     thread_poll.start(callback(&event_queue, &EventQueue::dispatch_forever));
 
     // Initialize PWM PCA9685 device
-    pca9685_pwm.begin();
-    // pca9685_pwm.setPrescale(64); //This value is decided for 10ms interval.
-    pca9685_pwm.frequencyI2C(400000); // 400kHz
-    pca9685_pwm.setPWMFreq(1000.0); // PWM frequency in Hertz
+    // pca9685_pwm.begin();
+    // pca9685_pwm.frequencyI2C(400000); // 400kHz
+    // pca9685_pwm.setPWMFreq(1000.0); // PWM frequency in Hertz
 
     // Loop    
-    int cnt = 0 ;
     while (true) {
         // Write if writable.
         time_curr = timer.elapsed_time();
         std::chrono::duration<int, std::micro> dt_send = time_curr-time_send_prev;
-        // std::chrono::duration<int, std::micro> dt_recv = time_curr-time_recv_prev;
 
-        if(dt_send.count() > 9999){ // 10 ms interval
-            if(serial.writable()) {
-                cnt = 0;
-                vol_float.float_ = voltage_adc; // Read Analog voltage data (A0 pin, AnalogIn)
-                serial.send_withChecksum(vol_float.bytes_, 4);
-            }
-
+        if(dt_send.count() > 2499){ // 2.5 ms interval
+            if(serial.writable()) 
+                event_queue.call(ISR_sendSerialVoltage);
+            
             time_send_prev = time_curr;
         }
     
         // Read data if data exists.
-        if(serial.readable()){
-            ISR_readSerial();
-            
-        }
+        if(serial.readable())
+            event_queue.call(ISR_readSerial);            
+        
     }
     
     return 0;

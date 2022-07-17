@@ -362,11 +362,11 @@ void SerialCommunicator::send_withChecksum(const unsigned char* data, int len){
 
     buf_send_[idx++] = DLE; buf_send_[idx++] = ETX; // DLE, ETX --> end of the packet.
 
-    std::cout << "send data: ";
-    for(int i = 0; i < idx; ++i){
-        std::cout << (int)buf_send_[i] <<" ";
-    }
-    std::cout << "\n";
+    // std::cout << "send data: ";
+    // for(int i = 0; i < idx; ++i){
+    //     std::cout << (int)buf_send_[i] <<" ";
+    // }
+    // std::cout << "\n";
     serial_->write_some(boost::asio::buffer(buf_send_, idx));
     // std::cout << "write length : " << len +6 << std::endl;
 };
