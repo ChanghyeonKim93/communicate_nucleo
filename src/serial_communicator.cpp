@@ -179,10 +179,13 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
     std::this_thread::sleep_for(1s);
     idx_stk_ = 0;
     timer::tic();
+    boost::system::error_code ec;
     while(true){
         // Try to read serial port
-        int len_read = serial_->read_some(boost::asio::buffer(buf_recv_, BUF_SIZE));
-        
+        int len_read = serial_->read_some(boost::asio::buffer(buf_recv_, BUF_SIZE), ec);
+        if(ec){
+            std::cout << "error code : " << ec << std::endl;
+        }
         if( len_read > 0 ) { // There is data
             // std::cout << "get new : " << len_read << std::endl;
             for(uint32_t i = 0; i < len_read; ++i) {
@@ -214,11 +217,11 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                             
                             if(crc16_calc.ushort_ == crc16_recv.ushort_){
                                 //CRC test OK!
-                                std::cout <<" CRC OK!!!  success: " << seq_recv_ <<", crc err: " << seq_recv_crc_error_ <<", overflow err: " << seq_recv_overflow_ <<"\n";
+                                // std::cout <<" CRC OK!!!  success: " << seq_recv_ <<", crc err: " << seq_recv_crc_error_ <<", overflow err: " << seq_recv_overflow_ <<"\n";
                                 ++seq_recv_;
 
                                 // Packet END. Copy the packet.
-                                std::cout << "== " << timer::toc(0) << "ms, ETX found. seq: " << seq_recv_ << ", length: " << idx_stk_-2 << std::endl;
+                                // std::cout << "== " << timer::toc(0) << "ms, ETX found. seq: " << seq_recv_ << ", length: " << idx_stk_-2 << std::endl;
                                 mutex_rx_->lock();
                                 len_packet_recv_ = idx_stk_ - 2;
                                 // std::cout << " recved contents: ";
@@ -227,11 +230,18 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                                     // std::cout << (int)packet_recv_[j] << " ";
                                 }
                                 // std::cout << std::endl;
+
                                 mutex_rx_->unlock();
                                 flag_packet_ready_ = true;
                             }
                             else{
                                 std::cout << "CRC error!!\n";
+                                
+                                for(int j = 0; j < idx_stk_; ++j){
+                                    std::cout << (int)packet_stack_[j] << " ";
+                                }
+                                std::cout << std::endl;
+
                                 ++seq_recv_crc_error_;
                                 len_packet_recv_   = 0;
                                 flag_packet_ready_ = false;
@@ -247,7 +257,7 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                         else { // 스택.
                             packet_stack_[idx_stk_] = c;
                             ++idx_stk_; 
-                            if(idx_stk_ >= 16){ // wierd error...
+                            if(idx_stk_ >= 64){ // wierd error...
                                 for(int kk = 0 ; kk < idx_stk_; ++kk){
                                     std::cout << (int) packet_stack_[kk] << " ";
                                 }
@@ -313,7 +323,7 @@ void SerialCommunicator::processTX(std::shared_future<void> terminate_signal){
         }
 
 
-        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(10));
+        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(50));
         if (terminate_status == std::future_status::ready){
 
 

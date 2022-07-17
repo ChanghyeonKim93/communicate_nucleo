@@ -1,6 +1,6 @@
 <launch>
     <!-- Serial settings-->
-    <arg name="serial_port"           default="/dev/ttyACM0"/>
+    <arg name="serial_port"           default="/dev/ttyUSB0"/>
     <arg name="baud_rate"             default="921600"/> <!-- 115200 default-->
 
     <!-- Topicnames & motor control signal publish frequency-->
