@@ -21,6 +21,7 @@
 
 #include "union_struct.h"
 #include "crc16.h" // CRC16 checksum test
+#include "timer.h"
 
 #define DLE 0x10
 #define STX 0x02
@@ -77,8 +78,10 @@ private:
     unsigned char buf_recv_[BUF_SIZE];
     unsigned char buf_send_[BUF_SIZE];
     
-    uint32_t stack_len_;
+    uint32_t idx_stk_;
     unsigned char packet_stack_[BUF_SIZE];
+
+    unsigned char packet_[BUF_SIZE];
 
 private:
     uint32_t seq_recv_;
@@ -86,6 +89,9 @@ private:
 
     uint32_t len_recv_;
     uint32_t len_send_;
+
+    uint32_t len_packet_;
+    bool flag_packet_ready_;
 
 // Variables to elegantly terminate TX & RX threads
 private:

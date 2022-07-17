@@ -2,7 +2,7 @@
 #include "BufferedSerial.h"
 
 SerialCommunicatorMbed::SerialCommunicatorMbed(int baud_rate)
-: buffered_serial_(USBTX,USBRX), recv_led_(LED1), recv_signal_(D12)
+: buffered_serial_(USBTX,USBRX), recv_signal_(D12)
 {
     //Serial baud rate
     buffered_serial_.set_baud(baud_rate);
@@ -29,16 +29,25 @@ char SerialCommunicatorMbed::stringChecksum(const char* s, int idx_start, int id
 void SerialCommunicatorMbed::send_withChecksum(const char* data, int len){
     char crc = stringChecksum(data, 0, len-1);
 
-    buf_send_[0] = STX_;
-    buf_send_[1] = (char)len;
-    for(int i = 0; i < len; ++i) buf_send_[2+i] = data[i];
-    buf_send_[len+2] = CTX_;
-    buf_send_[len+3] = crc;
-    buf_send_[len+4] = ETX_;
+    buf_send_[0] = DLE; 
+    buf_send_[1] = STX;
+
+    for(int i = 0; i < len; ++i) {
+        if(data[i] == DLE){
+            buf_send_[2+i] = DLE;
+            ++i;
+            buf_send_[2+i] = DLE;
+            ++len;
+        }
+        else{
+            buf_send_[2+i] = data[i];
+        }
+    }
+    buf_send_[len+2] = crc;
+    buf_send_[len+3] = DLE; buf_send_[len+4] = ETX;
 
     buffered_serial_.write(buf_send_, len+5);
 };
-
 void SerialCommunicatorMbed::send_withoutChecksum(const char* data, int len){
     buffered_serial_.write(data, len);
 };

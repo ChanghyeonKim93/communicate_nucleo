@@ -5,10 +5,9 @@
 
 #define BUF_SIZE 1024
 
-enum MSG_TYPE{
-    MCU_TO_PC = 1,
-    PC_TO_MCU = 2
-};
+#define DLE 0x10
+#define STX 0x02
+#define ETX 0x03
 
 class SerialCommunicatorMbed{
 private:
@@ -43,7 +42,6 @@ private:
 
     uint32_t seq = 0;
 
-    DigitalOut recv_led_;
     DigitalOut recv_signal_;
 
 public:

@@ -4,7 +4,8 @@ SerialCommunicator::SerialCommunicator(const std::string& portname, const int& b
     : STX_({DLE, STX}), ETX_({DLE, ETX}), 
     seq_recv_(0), seq_send_(0), 
     len_send_(0), len_recv_(0),
-    io_service_(), timeout_(io_service_)
+    len_packet_(0),
+    io_service_(), timeout_(io_service_), flag_packet_ready_(false)
 {    
     // initialize mutex
     mutex_rx_ = std::make_shared<std::mutex>();
@@ -131,53 +132,90 @@ void SerialCommunicator::runThreadTX(){
 
 void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
     // Initialize
-    bool flagSTXFound = false;
+    bool flagStacking = false;
     bool flagDLEFound = false;
-    stack_len_ = 0;
 
+    std::this_thread::sleep_for(2s);
+    idx_stk_ = 0;
+    timer::tic();
     while(true){
         // Try to read serial port
         int len_read = serial_->read_some(boost::asio::buffer(buf_recv_, BUF_SIZE));
 
         if( len_read > 0) { // There is data
-            std::cout << " len read : " <<len_read << std::endl;
+            // std::cout << " len read : " <<len_read << std::endl;
 
-            for(int i = 0; i < len_read; ++i){
-                if(flagSTXFound) { // 현재 Packet stack 중...
-                    if(flagDLEFound){ // 1) DLE, DLE or 2) DLE, ETX
-                        if(buf_recv_[i] == DLE){ // 1) DLE, DLE --> 실제로 DLE
-                            packet_stack_[stack_len_] = buf_recv_[i];
-                            ++stack_len_;
-                        }
-                        else if(buf_recv_[i] == ETX){ // 2) DLE, ETX
-                            flagSTXFound = false;
+            for(int i = 0; i < len_read; ++i) {
+
+
+
+                if( flagStacking ) { // 현재 Packet stack 중...
+
+                    if( flagDLEFound ) { // 1) DLE, DLE / 2) DLE, ETX
+
+                        if( buf_recv_[i] == DLE ) { // 1) DLE, DLE --> 실제데이터가 DLE
                             flagDLEFound = false;
+
+                            packet_stack_[idx_stk_] = buf_recv_[i];
+                            ++idx_stk_;
+                        }
+                        else if( buf_recv_[i] == ETX ){ // 2) DLE, ETX
+                            flagStacking = false;
+                            flagDLEFound = false;
+                            ++seq_recv_;
+
                             // Packet END. Copy the packet.
-                            for(int j = 0; j < stack_len_; ++j){
-                                std::cout << packet_stack_[j] <<" " << std::endl;
+                            std::cout << "== " << timer::toc(0) << "ms, ETX found. seq: " << seq_recv_ << ", length: " << idx_stk_ << std::endl;
+                            mutex_rx_->lock();
+                            for(int j = 0; j < idx_stk_; ++j){
+                                packet_[j] = packet_stack_[j];
+                                std::cout << (int)packet_[j] << " ";
                             }
+                            std::cout << std::endl;
+                            
+                            len_packet_        = idx_stk_;
+                            flag_packet_ready_ = true;
+                            mutex_rx_->unlock();
+
+                            idx_stk_ = 0;                  
                         }
                     }
-                    else { // non DLE, just stack.
-                        packet_stack_[stack_len_] = buf_recv_[i];
-                        ++stack_len_;
+                    else { // 이전에 DLE가 발견되지 않았다.
+                        if(buf_recv_[i] == DLE){ // DLE발견
+                            flagDLEFound = true;
+                        }
+                        else { // 스택.
+                            packet_stack_[idx_stk_] = buf_recv_[i];
+                            ++idx_stk_; 
+                            if(idx_stk_ >= BUF_SIZE){
+                                flagStacking = false;
+                                flagDLEFound = false;
+                                std::cout << "WARNING ! - RX STACK OVER FLOW!\n" << std::endl;
+                            }
+                            // std::cout << (int)buf_recv_[i] << std::endl;
+                        }
                     }
+
                 }
-                else{ // 아직 STX를 발견하지 못함. (Stack 하지않음)
-                std::cout << " not found STX ... \n";
+                else { // 아직 STX를 발견하지 못함. (Stack 하지않음)
                     if(flagDLEFound){ // 이전에 DLE나옴.
-                        if(buf_recv_[i] == STX) {
-                            // STX 찾음
-                            flagSTXFound = true;
-                            stack_len_   = 0;
+                        if(buf_recv_[i] == STX) { // STX 찾음, 새로운 packet을 stack 시작함.
+                            std::cout << "== " << " found STX!\n";
+                            flagDLEFound       = false;
+
+                            flagStacking       = true;
+                            idx_stk_   = 0;
+
+                            flag_packet_ready_ = false;
                         }
                     }
                     else { // 
-                        if(buf_recv_[i] == DLE) { 
-                            flagDLEFound = true;
-                        }
+                        std::cout << " not found STX. DLE found. \n";
+                        if(buf_recv_[i] == DLE) flagDLEFound = true;
                     }
                 }
+
+
             }
         }
 
