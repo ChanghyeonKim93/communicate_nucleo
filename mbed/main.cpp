@@ -85,8 +85,8 @@ void ISR_readSerial(){
 };
 
 void ISR_sendSerialVoltage(){
-    // vol_ushort.ushort_ = voltage_adc.read_u16(); // Read Analog voltage data (A0 pin, AnalogIn)
-    vol_ushort.ushort_ = 22222;
+    vol_ushort.ushort_ = voltage_adc.read_u16(); // Read Analog voltage data (A0 pin, AnalogIn)
+    // vol_ushort.ushort_ = 22222;
     serial.send_withChecksum(vol_ushort.bytes_, 2);
 };
 
@@ -117,14 +117,14 @@ int main() {
 
         if(dt_send.count() > 2499){ // 2.5 ms interval
             if(serial.writable()) 
-                event_queue.call(ISR_sendSerialVoltage);
+                ISR_sendSerialVoltage();
             
             time_send_prev = time_curr;
         }
     
         // Read data if data exists.
         if(serial.readable())
-            event_queue.call(ISR_readSerial);            
+            ISR_readSerial();            
         
     }
     

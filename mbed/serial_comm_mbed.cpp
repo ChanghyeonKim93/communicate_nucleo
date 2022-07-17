@@ -135,14 +135,14 @@ bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
                             idx_stk_ = 0;
                         }
                     }
-                    else{ // DLE not found
+                    else { // DLE not found
                         if(c == DLE){  // DLE found
                             flagDLEFound = true;
                         }
                         else{
                             packet_stack_[idx_stk_] = c;
                             ++idx_stk_;
-                            if(idx_stk_ >= 64){
+                            if(idx_stk_ >= 48){
                                 flagStacking = false;
                                 flagDLEFound = false;
                                 idx_stk_     = 0;
