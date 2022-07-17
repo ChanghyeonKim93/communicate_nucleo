@@ -74,6 +74,7 @@ void SerialCommunicatorMbed::send_withoutChecksum(const unsigned char* data, int
 bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
     flag_packet_ready_ = false;
     if(buffered_serial_.readable()) { // data recved.
+    
         uint32_t len_read = buffered_serial_.read(buf_recv_, BUF_SIZE);
         if(len_read > 0) { // there is data
         
@@ -135,7 +136,7 @@ bool SerialCommunicatorMbed::tryToReadSerialBuffer(){
                         else{
                             packet_stack_[idx_stk_] = c;
                             ++idx_stk_;
-                            if(idx_stk_ >= 16){
+                            if(idx_stk_ >= 64){
                                 flagStacking = false;
                                 flagDLEFound = false;
                                 idx_stk_     = 0;

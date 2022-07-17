@@ -103,7 +103,7 @@ int main() {
         std::chrono::duration<int, std::micro> dt_send = time_curr-time_send_prev;
         // std::chrono::duration<int, std::micro> dt_recv = time_curr-time_recv_prev;
 
-        if(dt_send.count() > 19999){ // 20 ms interval
+        if(dt_send.count() > 9999){ // 10 ms interval
             if(serial.writable()) {
                 cnt = 0;
                 vol_float.float_ = voltage_adc; // Read Analog voltage data (A0 pin, AnalogIn)

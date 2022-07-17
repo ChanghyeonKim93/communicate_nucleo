@@ -301,10 +301,10 @@ void SerialCommunicator::processTX(std::shared_future<void> terminate_signal){
             uint32_t len_tmp = len_packet_send_;
 
             mutex_tx_->lock();
+            flag_send_packet_ready_ = false;
 
             send_withChecksum(packet_send_, len_packet_send_);
             len_packet_send_        = 0;
-            flag_send_packet_ready_ = false;
             ++seq_send_;
 
             mutex_tx_->unlock();
