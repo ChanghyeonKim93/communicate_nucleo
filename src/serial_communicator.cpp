@@ -1,11 +1,11 @@
 #include "serial_communicator.h"
 
 SerialCommunicator::SerialCommunicator(const std::string& portname, const int& baud_rate)
-    : STX_({DLE, STX}), ETX_({DLE, ETX}), 
-    seq_recv_(0), seq_send_(0), 
-    len_send_(0), len_recv_(0),
-    len_packet_(0),
-    io_service_(), timeout_(io_service_), flag_packet_ready_(false)
+    : seq_recv_(0), seq_send_(0), 
+    len_packet_recv_(0), len_packet_send_(0),
+    seq_recv_crc_error_(0),  seq_recv_overflow_(0),
+    flag_packet_ready_(false), flag_send_packet_ready_(false),
+    io_service_(), timeout_(io_service_)
 {    
     // initialize mutex
     mutex_rx_ = std::make_shared<std::mutex>();
@@ -47,6 +47,47 @@ SerialCommunicator::~SerialCommunicator() {
     // Close the serial port.
     this->closeSerialPort();
     std::cerr << "SerialCommunicator - terminated.\n";
+};
+
+bool SerialCommunicator::isPacketReady(){
+    bool res = false;
+    mutex_rx_->lock();
+    res = this->flag_packet_ready_;
+    mutex_rx_->unlock();
+    return res;
+};
+
+uint32_t SerialCommunicator::getPacket(unsigned char* buf){
+    uint32_t len = 0;
+    mutex_rx_->lock();
+    if(len_packet_recv_ > 0){
+        len = len_packet_recv_;
+        for(uint32_t i = 0; i < len; ++i) buf[i] = packet_recv_[i];
+
+        // Initialize the flag 
+        len_packet_recv_ = 0;
+        flag_packet_ready_ = false;
+    }
+    mutex_rx_->unlock();
+
+    // return len > 0 when data ready.
+    // else 0.
+    return len;
+};
+
+bool SerialCommunicator::sendPacket(unsigned char* buf, uint32_t len){
+    bool isOK = len > 0;
+
+    // update message & length
+    this->mutex_tx_->lock();
+
+    len_packet_send_        = len; 
+    for(uint32_t i = 0; i < len; ++i) 
+        packet_send_[i] = buf[i];
+
+    flag_send_packet_ready_ = true; // Flag up!
+    this->mutex_tx_->unlock();
+    return isOK;
 };
 
 void SerialCommunicator::setPortName(std::string portname){ portname_ = portname; };
@@ -135,61 +176,86 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
     bool flagStacking = false;
     bool flagDLEFound = false;
 
-    std::this_thread::sleep_for(2s);
+    std::this_thread::sleep_for(1s);
     idx_stk_ = 0;
     timer::tic();
     while(true){
         // Try to read serial port
         int len_read = serial_->read_some(boost::asio::buffer(buf_recv_, BUF_SIZE));
-
-        if( len_read > 0) { // There is data
-            // std::cout << " len read : " <<len_read << std::endl;
-
-            for(int i = 0; i < len_read; ++i) {
-
-
+        
+        if( len_read > 0 ) { // There is data
+            // std::cout << "get new : " << len_read << std::endl;
+            for(uint32_t i = 0; i < len_read; ++i) {
+                
+                unsigned char c = buf_recv_[i];
+                // std::cout << "stkidx : " << idx_stk_ <<", char:"<< (int)c << std::endl;
 
                 if( flagStacking ) { // 현재 Packet stack 중...
-
                     if( flagDLEFound ) { // 1) DLE, DLE / 2) DLE, ETX
-
-                        if( buf_recv_[i] == DLE ) { // 1) DLE, DLE --> 실제데이터가 DLE
+                        if( c == DLE ) { // 1) DLE, DLE --> 실제데이터가 DLE
                             flagDLEFound = false;
 
-                            packet_stack_[idx_stk_] = buf_recv_[i];
+                            packet_stack_[idx_stk_] = c;
                             ++idx_stk_;
                         }
-                        else if( buf_recv_[i] == ETX ){ // 2) DLE, ETX
+                        else if( c == ETX ){ // 2) DLE, ETX
                             flagStacking = false;
                             flagDLEFound = false;
-                            ++seq_recv_;
 
-                            // Packet END. Copy the packet.
-                            std::cout << "== " << timer::toc(0) << "ms, ETX found. seq: " << seq_recv_ << ", length: " << idx_stk_ << std::endl;
-                            mutex_rx_->lock();
-                            for(int j = 0; j < idx_stk_; ++j){
-                                packet_[j] = packet_stack_[j];
-                                std::cout << (int)packet_[j] << " ";
-                            }
-                            std::cout << std::endl;
+                            // Check CRC16-CCITT
+                            USHORT_UNION crc16_calc;
+                            crc16_calc.ushort_ = this->stringChecksumCRC16_CCITT(packet_stack_, 0, idx_stk_ - 3);
+
+                            USHORT_UNION crc16_recv;
+                            crc16_recv.bytes_[0] = packet_stack_[idx_stk_-2];
+                            crc16_recv.bytes_[1] = packet_stack_[idx_stk_-1];
+
+                            // std::cout << " crc check: " << crc16_recv.ushort_ <<", " << crc16_calc.ushort_ << std::endl;
                             
-                            len_packet_        = idx_stk_;
-                            flag_packet_ready_ = true;
-                            mutex_rx_->unlock();
+                            if(crc16_calc.ushort_ == crc16_recv.ushort_){
+                                //CRC test OK!
+                                std::cout <<" CRC OK!!!  success: " << seq_recv_ <<", crc err: " << seq_recv_crc_error_ <<", overflow err: " << seq_recv_overflow_ <<"\n";
+                                ++seq_recv_;
+
+                                // Packet END. Copy the packet.
+                                std::cout << "== " << timer::toc(0) << "ms, ETX found. seq: " << seq_recv_ << ", length: " << idx_stk_-2 << std::endl;
+                                mutex_rx_->lock();
+                                len_packet_recv_ = idx_stk_ - 2;
+                                // std::cout << " recved contents: ";
+                                for(int j = 0; j < len_packet_recv_; ++j){
+                                    packet_recv_[j] = packet_stack_[j];
+                                    // std::cout << (int)packet_recv_[j] << " ";
+                                }
+                                // std::cout << std::endl;
+                                mutex_rx_->unlock();
+                                flag_packet_ready_ = true;
+                            }
+                            else{
+                                std::cout << "CRC error!!\n";
+                                ++seq_recv_crc_error_;
+                                len_packet_recv_   = 0;
+                                flag_packet_ready_ = false;
+                            }
 
                             idx_stk_ = 0;                  
                         }
                     }
                     else { // 이전에 DLE가 발견되지 않았다.
-                        if(buf_recv_[i] == DLE){ // DLE발견
+                        if(c == DLE){ // DLE발견
                             flagDLEFound = true;
                         }
                         else { // 스택.
-                            packet_stack_[idx_stk_] = buf_recv_[i];
+                            packet_stack_[idx_stk_] = c;
                             ++idx_stk_; 
-                            if(idx_stk_ >= BUF_SIZE){
+                            if(idx_stk_ >= 16){ // wierd error...
+                                for(int kk = 0 ; kk < idx_stk_; ++kk){
+                                    std::cout << (int) packet_stack_[kk] << " ";
+                                }
+                                std::cout << "\n";
                                 flagStacking = false;
                                 flagDLEFound = false;
+                                idx_stk_ = 0;
+                                ++seq_recv_overflow_;
                                 std::cout << "WARNING ! - RX STACK OVER FLOW!\n" << std::endl;
                             }
                             // std::cout << (int)buf_recv_[i] << std::endl;
@@ -197,30 +263,30 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                     }
 
                 }
-                else { // 아직 STX를 발견하지 못함. (Stack 하지않음)
+                else { // flagStacking == false    아직 STX를 발견하지 못함. (Stack 하지않음)
                     if(flagDLEFound){ // 이전에 DLE나옴.
-                        if(buf_recv_[i] == STX) { // STX 찾음, 새로운 packet을 stack 시작함.
-                            std::cout << "== " << " found STX!\n";
-                            flagDLEFound       = false;
+                        if(c == STX) { // STX 찾음, 새로운 packet을 stack 시작함.
+                            // std::cout << "== " << " found STX!\n";
 
                             flagStacking       = true;
                             idx_stk_   = 0;
 
                             flag_packet_ready_ = false;
                         }
+                        flagDLEFound = false; // STX 이든 아니든...
                     }
                     else { // 
-                        std::cout << " not found STX. DLE found. \n";
-                        if(buf_recv_[i] == DLE) flagDLEFound = true;
+                        // std::cout << " not found STX. DLE found. \n";
+                        if(c == DLE) {
+                            flagDLEFound = true;
+                        }
                     }
                 }
-
-
             }
         }
 
-        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(10));
-        if (terminate_status == std::future_status::ready){
+        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(100));
+        if (terminate_status == std::future_status::ready) {
                     
 
             break;
@@ -231,7 +297,20 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
 
 void SerialCommunicator::processTX(std::shared_future<void> terminate_signal){
     while(true){
-        // Do something
+        if(flag_send_packet_ready_){
+            uint32_t len_tmp = len_packet_send_;
+
+            mutex_tx_->lock();
+
+            send_withChecksum(packet_send_, len_packet_send_);
+            len_packet_send_        = 0;
+            flag_send_packet_ready_ = false;
+            ++seq_send_;
+
+            mutex_tx_->unlock();
+
+            // std::cout << "                                           TX Send:" << seq_send_ << ", len: " << len_tmp << std::endl;
+        }
 
 
         std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(10));
@@ -244,6 +323,44 @@ void SerialCommunicator::processTX(std::shared_future<void> terminate_signal){
     std::cerr << "SerialCommunicator - TX thread receives termination signal.\n";
 };
 
-unsigned short SerialCommunicator::stringChecksumCRC16_CCITT(const char* s, int idx_start, int idx_end){
+void SerialCommunicator::send_withChecksum(const unsigned char* data, int len){
+    USHORT_UNION crc16_calc;
+    crc16_calc.ushort_ = crc16_ccitt(data, 0, len-1);
+
+    uint32_t idx       = 2;
+    buf_send_[0] = DLE; buf_send_[1] = STX; // DLE, STX --> start of the packet
+    for(uint32_t i = 0; i < len; ++i) {
+        if(data[i] == DLE){
+            buf_send_[idx++]  = DLE;
+            buf_send_[idx++]  = DLE;
+        }
+        else buf_send_[idx++] = data[i];
+    }
+    
+    // len = idx - 2;
+    if(crc16_calc.bytes_[0] == DLE){
+        buf_send_[idx++]  = DLE;
+        buf_send_[idx++]  = DLE;
+    }
+    else buf_send_[idx++] = crc16_calc.bytes_[0];
+
+    if(crc16_calc.bytes_[1] == DLE){
+        buf_send_[idx++]  = DLE;
+        buf_send_[idx++]  = DLE;
+    }
+    else buf_send_[idx++] = crc16_calc.bytes_[1];
+
+    buf_send_[idx++] = DLE; buf_send_[idx++] = ETX; // DLE, ETX --> end of the packet.
+
+    std::cout << "send data: ";
+    for(int i = 0; i < idx; ++i){
+        std::cout << (int)buf_send_[i] <<" ";
+    }
+    std::cout << "\n";
+    serial_->write_some(boost::asio::buffer(buf_send_, idx));
+    // std::cout << "write length : " << len +6 << std::endl;
+};
+
+unsigned short SerialCommunicator::stringChecksumCRC16_CCITT(const unsigned char* s, int idx_start, int idx_end){
     return crc16_ccitt(s,idx_start, idx_end);
 };

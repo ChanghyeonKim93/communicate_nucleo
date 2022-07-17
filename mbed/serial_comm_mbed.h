@@ -2,8 +2,11 @@
 #define _SERIAL_COMM_MBED_H_
 
 #include "mbed.h"
+#include "crc16.h"
+#include "union_struct.h"
+#include <cstdint>
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 512
 
 #define DLE 0x10
 #define STX 0x02
@@ -13,52 +16,57 @@ class SerialCommunicatorMbed{
 private:
     BufferedSerial buffered_serial_;
 
-    char STX_     = '$';
-    char ETX_     = '%';
-    char CTX_     = '*';
+    bool flagStacking;
+    bool flagDLEFound;
 
-    bool flagSTXFound;
-    bool flagCTXFound;
+    uint32_t idx_stk_;
+    unsigned char packet_stack_[BUF_SIZE];
 
-    // Related to serial read
-    char buf_packet_[BUF_SIZE];
-    uint32_t idx_packet_;
+// related to RX
+private:
+    uint32_t seq_recv_;
+    unsigned char buf_recv_[BUF_SIZE];
 
-    uint32_t cnt_read_success_;
-    uint32_t cnt_read_fail_;
+    uint32_t len_packet_recv_;
+    unsigned char packet_recv_[BUF_SIZE];
 
-    char buf_read_[BUF_SIZE];
-    char buf_send_[BUF_SIZE];
+    bool flag_packet_ready_;
+
+// related to TX
+    uint32_t seq_send_;
+    unsigned char buf_send_[BUF_SIZE];
+
+    uint32_t len_packet_send_;
+    unsigned char packet_send_[BUF_SIZE];
+
+    bool flag_send_packet_ready_;
+
+// for debug
+private:
+    uint32_t seq_recv_success_;
+    uint32_t seq_recv_crc_error_;
+    uint32_t seq_recv_overflow_;
+    // uint32_t seq_
 
 private:
-    char message_read_[BUF_SIZE];
-    uint32_t len_message_read_;
-
-    char message_send_[BUF_SIZE];
-    uint32_t len_message_send_;
-
-    uint32_t seq_recv_ = 0;
-    uint32_t seq_send_ = 0;
-
-    uint32_t seq = 0;
-
-    DigitalOut recv_signal_;
+    DigitalOut signal_recv_;
+    DigitalOut signal_etx_;
+    DigitalOut signal_packet_ready_;
+    DigitalOut signal_send_;
 
 public:
     SerialCommunicatorMbed(int baud_rate);
     
-    void send_withChecksum(const char* data, int len);
-    void send_withoutChecksum(const char* data, int len);
+    void send_withChecksum(const unsigned char* data, int len);
+    void send_withoutChecksum(const unsigned char* data, int len);
 
     bool tryToReadSerialBuffer();
 
     bool readable();
     bool writable();
 
-    int getReceivedMessage(char* msg);
+    int getReceivedMessage(unsigned char* msg);
 
-private:
-    char stringChecksum(const char* s, int idx_start, int idx_end);
 };
 
 #endif

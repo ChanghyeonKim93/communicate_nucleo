@@ -17,9 +17,9 @@ SerialCommunicatorLinux::SerialCommunicatorLinux(const std::string& portname, co
     this->setBaudRate(baud_rate);
 
     // In 'termios-baud.h',
-    double bytes_per_second = (double)baud_rate/(10.0);
+    double bytes_per_second  = (double)baud_rate/(10.0);
     double packet_per_second = bytes_per_second/27.0; // 3413. Hz
-    double time_per_packet = 1./packet_per_second;
+    double time_per_packet   = 1./packet_per_second;
 
 #ifdef VERBOSE
     std::cout << "bytes_per_second: "  << bytes_per_second << std::endl;

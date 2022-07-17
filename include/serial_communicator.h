@@ -34,13 +34,14 @@ public:
     SerialCommunicator(const std::string& portname, const int& baud_rate);
     ~SerialCommunicator();
 
-    // bool isReceiveReady();
-    // int  getMessage(char* buf);
-    // bool sendMessage(char* buf, int len);
+    bool isPacketReady();
+    uint32_t getPacket(unsigned char* buf);
+    bool sendPacket(unsigned char* buf, uint32_t len);
 
 private:
     void runThreadRX();
     void runThreadTX();
+
     void processRX(std::shared_future<void> terminate_signal);
     void processTX(std::shared_future<void> terminate_signal);
 
@@ -57,10 +58,8 @@ private:
 private:
     void send_withChecksum(const unsigned char* data, int len);
 
-    void copyReadToRecvBuffer(int len);
-
 private:
-    unsigned short stringChecksumCRC16_CCITT(const char* s, int idx_start, int idx_end);
+    unsigned short stringChecksumCRC16_CCITT(const unsigned char* s, int idx_start, int idx_end);
 
 
 // Serial port related (boost::asio::serial )
@@ -71,27 +70,34 @@ private:
     boost::asio::serial_port*   serial_;
     boost::asio::io_service     io_service_;
     boost::asio::deadline_timer timeout_;
-
-    unsigned char STX_[2];
-    unsigned char ETX_[2];
-
-    unsigned char buf_recv_[BUF_SIZE];
-    unsigned char buf_send_[BUF_SIZE];
     
     uint32_t idx_stk_;
     unsigned char packet_stack_[BUF_SIZE];
 
-    unsigned char packet_[BUF_SIZE];
-
+// Related to RX
 private:
     uint32_t seq_recv_;
+    unsigned char buf_recv_[BUF_SIZE];
+
+    uint32_t len_packet_recv_;
+    unsigned char packet_recv_[BUF_SIZE];
+
+    std::atomic<bool> flag_packet_ready_;
+
+// Related to TX
+private:
     uint32_t seq_send_;
+    unsigned char buf_send_[BUF_SIZE];
 
-    uint32_t len_recv_;
-    uint32_t len_send_;
+    uint32_t len_packet_send_;
+    unsigned char packet_send_[BUF_SIZE];
 
-    uint32_t len_packet_;
-    bool flag_packet_ready_;
+    std::atomic<bool> flag_send_packet_ready_;
+
+// For debug
+private:
+    uint32_t seq_recv_crc_error_;
+    uint32_t seq_recv_overflow_;
 
 // Variables to elegantly terminate TX & RX threads
 private:

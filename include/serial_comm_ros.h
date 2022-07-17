@@ -23,11 +23,11 @@ private:
 
     void callbackToSend(const std_msgs::UInt16MultiArray::ConstPtr& msg);
     
-    bool receiveDataReady();
-    int  getMessage(char* data);
+    bool isPacketReady();
+    uint32_t getMessage(unsigned char* data);
 
-    void sendMessage(char* data, int len);
-    int fill16bitsTo8bits(const std_msgs::UInt16MultiArray::ConstPtr& msg, char* buf_send);
+    void sendMessage(unsigned char* data, int len);
+    int fill16bitsTo8bits(const std_msgs::UInt16MultiArray::ConstPtr& msg, unsigned char* buf_send);
 
 // Serial port related (Boost)
 private:
@@ -35,8 +35,8 @@ private:
     int         baudrate_;
     std::shared_ptr<SerialCommunicator> serial_communicator_;
 
-    char buf_send_[BUF_SIZE];
-    char buf_recv_[BUF_SIZE];
+    unsigned char buf_send_[BUF_SIZE];
+    unsigned char buf_recv_[BUF_SIZE];
 
 // ROS related
 private:
