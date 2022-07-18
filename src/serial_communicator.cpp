@@ -351,7 +351,32 @@ void SerialCommunicator::processTX(std::shared_future<void> terminate_signal){
         std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(50));
         if (terminate_status == std::future_status::ready){
 
+            // Zero send.
+            USHORT_UNION pwm;
+            pwm.ushort_ = 0;
 
+            mutex_tx_->lock();
+            for(int i = 0; i < 8; ++i){
+                packet_send_[2*i]   = pwm.bytes_[0];
+                packet_send_[2*i+1] = pwm.bytes_[1];
+            }
+
+            mutex_tx_->unlock();
+
+            std::cout << " Send zero signal ... trial 1...\n";
+            mutex_tx_->lock();
+            send_withChecksum(packet_recv_,16);
+            mutex_tx_->unlock();
+
+            std::cout << " Wait 1 second...\n";
+            sleep(1);
+
+            std::cout << " Send zero signal ... trial 2...\n";
+            mutex_tx_->lock();
+            send_withChecksum(packet_recv_,16);
+            mutex_tx_->unlock();
+
+            std::cout << "Zero signal done.\n";
             break;
         } 
     }
