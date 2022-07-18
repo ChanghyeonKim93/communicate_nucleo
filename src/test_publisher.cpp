@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
     ros::Publisher pub = nh.advertise<std_msgs::UInt16MultiArray>("/serial/pwm",1);
 
 	try{
-        uint16_t pwm_values[20] = {0,};
+        uint16_t pwm_values[80] = {0,};
         uint16_t a = 0;
-        for(int jj = 0; jj < 20; ++jj){
+        for(int jj = 0; jj < 80; ++jj){
             pwm_values[jj] = a; 
-            a += 200;
+            a += 50;
         }
         uint8_t cnt[8] = {0,2,4,6,8,10,12,14};
 		if(ros::ok()){
@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
                 std_msgs::UInt16MultiArray msg;
                 for(int i = 0; i < 8; ++i){
                     ++cnt[i];
-                    if(cnt[i]==20) cnt[i]=0;
+                    if(cnt[i]==80) cnt[i]=0;
                     msg.data.push_back(pwm_values[cnt[i]]);
                 }
                 pub.publish(msg);

@@ -98,6 +98,7 @@ private:
 private:
     uint32_t seq_recv_crc_error_;
     uint32_t seq_recv_overflow_;
+    uint32_t seq_recv_exception_;
 
 // Variables to elegantly terminate TX & RX threads
 private:

@@ -184,8 +184,10 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
         // Try to read serial port
         int len_read = serial_->read_some(boost::asio::buffer(buf_recv_, BUF_SIZE), ec);
         if(ec){
-            std::cout << "error code : " << ec << std::endl;
+            std::cout << "WARNING    ! - serial_->read_some(): error code : " << ec << std::endl;
+            continue;
         }
+        
         if( len_read > 0 ) { // There is data
             // std::cout << "get new : " << len_read << std::endl;
             for(uint32_t i = 0; i < len_read; ++i) {
@@ -235,8 +237,8 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                                 flag_packet_ready_ = true;
                             }
                             else{
-                                std::cout << "CRC error!!\n";
-                                
+                                std::cout << "WARNING    ! - CRC ERROR !\n" << std::endl;
+                                std::cout << "CRC ERR    ! seq: " << seq_recv_ <<", crc: " << seq_recv_crc_error_ <<", ofl: " << seq_recv_overflow_ <<", ect:" << seq_recv_exception_<<"\n";
                                 for(int j = 0; j < idx_stk_; ++j){
                                     std::cout << (int)packet_stack_[j] << " ";
                                 }
@@ -251,9 +253,14 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                         }
                         else{
                             // exceptional case
+                            ++seq_recv_exception_;
                             flagStacking = false;
                             flagDLEFound = false;
                             idx_stk_ = 0;
+
+                            std::cout << "WARNING    ! - While stacking, DLE is found, but there is no ETX.\n" << std::endl;
+                            std::cout << "DLE,no ETX ! seq: " << seq_recv_ <<", crc: " << seq_recv_crc_error_ <<", ofl: " << seq_recv_overflow_ <<", ect:" << seq_recv_exception_<<"\n";
+
                         }
                     }
                     else { // 이전에 DLE가 발견되지 않았다.
@@ -272,7 +279,8 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                                 flagDLEFound = false;
                                 idx_stk_ = 0;
                                 ++seq_recv_overflow_;
-                                std::cout << "WARNING ! - RX STACK OVER FLOW!\n" << std::endl;
+                                std::cout << "WARNING    ! - RX STACK OVER FLOW!\n" << std::endl;
+                                std::cout << "OVERFLOW   ! seq: " << seq_recv_ <<", crc: " << seq_recv_crc_error_ <<", ofl: " << seq_recv_overflow_ <<", ect:" << seq_recv_exception_<<"\n";
                             }
                             // std::cout << (int)buf_recv_[i] << std::endl;
                         }
