@@ -34,9 +34,16 @@ public:
     SerialCommunicator(const std::string& portname, const int& baud_rate);
     ~SerialCommunicator();
 
+    // Get packet
     bool isPacketReady();
     uint32_t getPacket(unsigned char* buf);
+
+    // Send packet
     bool sendPacket(unsigned char* buf, uint32_t len);
+
+    // Statistics
+    void getRXStatistics(uint32_t& seq, uint32_t& seq_crcerr, uint32_t& seq_overflowerr, uint32_t& seq_exceptionerr);
+    void getTXStatistics(uint32_t& seq);
 
 private:
     void runThreadRX();

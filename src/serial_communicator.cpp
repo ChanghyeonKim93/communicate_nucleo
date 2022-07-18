@@ -90,6 +90,17 @@ bool SerialCommunicator::sendPacket(unsigned char* buf, uint32_t len){
     return isOK;
 };
 
+void SerialCommunicator::getRXStatistics(uint32_t& seq, uint32_t& seq_crcerr, uint32_t& seq_overflowerr, uint32_t& seq_exceptionerr){
+    seq              = seq_recv_;
+    seq_crcerr       = seq_recv_crc_error_;
+    seq_overflowerr  = seq_recv_overflow_;
+    seq_exceptionerr = seq_recv_exception_;
+};
+
+void SerialCommunicator::getTXStatistics(uint32_t& seq){
+    seq = seq_send_;
+};
+
 void SerialCommunicator::setPortName(std::string portname){ portname_ = portname; };
 void SerialCommunicator::setBaudRate(int baudrate) {
     checkSupportedBaudRate(baudrate);
@@ -187,7 +198,7 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
             std::cout << "WARNING    ! - serial_->read_some(): error code : " << ec << std::endl;
             continue;
         }
-        
+
         if( len_read > 0 ) { // There is data
             // std::cout << "get new : " << len_read << std::endl;
             for(uint32_t i = 0; i < len_read; ++i) {

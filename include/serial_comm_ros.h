@@ -18,11 +18,15 @@ public:
 
 private:
     void getParameters();
-
     void run();
 
     void callbackToSend(const std_msgs::UInt16MultiArray::ConstPtr& msg);
     
+    void showSerialStatistics(double dt);
+
+
+// Packet manipulation
+private:
     bool isPacketReady();
     uint32_t getMessage(unsigned char* data);
 

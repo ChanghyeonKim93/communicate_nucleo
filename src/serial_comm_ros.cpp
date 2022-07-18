@@ -60,6 +60,9 @@ void SerialCommROS::getParameters(){
 void SerialCommROS::run(){
     ROS_INFO_STREAM("SerialCommROS - rosnode runs at {" << loop_frequency_ <<"} Hz\n");
     ros::Rate rate(loop_frequency_);
+
+    ros::Time time_prev = ros::Time::now();
+    ros::Time time_curr;
     while(ros::ok()){
         if(isPacketReady()) {
             uint32_t len = getMessage(buf_recv_);
@@ -71,7 +74,7 @@ void SerialCommROS::run(){
                 voltage_ushort.bytes_[1] = buf_recv_[1];
 
                 float voltage_float= ((float)voltage_ushort.ushort_/65535.0f * 3.3f);
-                ROS_INFO_STREAM("VOLTAGE : " << voltage_float << " V");
+                // ROS_INFO_STREAM("VOLTAGE : " << voltage_float << " V");
                 pub_msg_recv_.publish(msg_recv_);
                 msg_recv_.data.clear();
             }
@@ -80,7 +83,13 @@ void SerialCommROS::run(){
             }
 
         }
-
+        
+        time_curr = ros::Time::now();
+        double dt = (time_curr-time_prev).toSec();
+        if( dt > 0.9999){
+            this->showSerialStatistics(dt);
+            time_prev = time_curr;
+        }
         ros::spinOnce();
         rate.sleep();
     }
@@ -91,6 +100,31 @@ void SerialCommROS::callbackToSend(const std_msgs::UInt16MultiArray::ConstPtr& m
     sendMessage(buf_send_, len);
 };  
 
+void SerialCommROS::showSerialStatistics(double dt){
+    static uint32_t seq_rx_success_prev = 0;
+    static uint32_t seq_tx_success_prev = 0;
+
+    uint32_t seq_rx_success;
+    uint32_t seq_rx_crcerr;
+    uint32_t seq_rx_oflerr;
+    uint32_t seq_rx_ecp;
+    serial_communicator_->getRXStatistics(seq_rx_success, seq_rx_crcerr, seq_rx_oflerr, seq_rx_ecp);
+    
+    uint32_t seq_tx_success;
+    serial_communicator_->getTXStatistics(seq_tx_success);
+
+    // Calculate Rate
+    double freq_rx = (double)(seq_rx_success - seq_rx_success_prev)/dt;
+    double freq_tx = (double)(seq_tx_success - seq_tx_success_prev)/dt;
+
+    // Show statistics
+    ROS_INFO_STREAM("RX: " << freq_rx << " Hz / seq- good: " << seq_rx_success << " / err- crc:" << seq_rx_crcerr << ",ofl:" << seq_rx_oflerr << ",excpt:" << seq_rx_ecp);
+    ROS_INFO_STREAM("TX: " << freq_tx << " Hz / seq- good: " << seq_tx_success);
+
+    // Update the previous data
+    seq_rx_success_prev = seq_rx_success;
+    seq_tx_success_prev = seq_tx_success;
+};
 
 bool SerialCommROS::isPacketReady(){
     return serial_communicator_->isPacketReady();
