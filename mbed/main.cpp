@@ -86,7 +86,6 @@ void ISR_readSerial(){
 
 void ISR_sendSerialVoltage(){
     vol_ushort.ushort_ = voltage_adc.read_u16(); // Read Analog voltage data (A0 pin, AnalogIn)
-    // vol_ushort.ushort_ = 22222;
     serial.send_withChecksum(vol_ushort.bytes_, 2);
 };
 

@@ -71,7 +71,6 @@ void SerialCommROS::run(){
                 voltage_ushort.bytes_[1] = buf_recv_[1];
 
                 float voltage_float= ((float)voltage_ushort.ushort_/65535.0f * 3.3f);
-                std::cout << "vol ushort : " << voltage_ushort.ushort_ << std::endl;
                 ROS_INFO_STREAM("VOLTAGE : " << voltage_float << " V");
                 pub_msg_recv_.publish(msg_recv_);
                 msg_recv_.data.clear();
