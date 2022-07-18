@@ -194,9 +194,13 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
     while(true){
         // Try to read serial port
         int len_read = serial_->read_some(boost::asio::buffer(buf_recv_, BUF_SIZE), ec);
-        if(ec){
-            std::cout << "WARNING    ! - serial_->read_some(): error code : " << ec << std::endl;
+        if(ec == boost::system::errc::interrupted){
+            // error code 4. Interrupted... 괜찮을걸? ㅋㅋ
             continue;
+        }
+        else if(ec){
+            // Error code는 boost::system::errc 에서 찾으면 된다.
+            std::cout << "WARNING    ! - serial_->read_some(): error code : " << ec << std::endl;
         }
 
         if( len_read > 0 ) { // There is data
