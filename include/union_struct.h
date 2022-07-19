@@ -5,7 +5,7 @@
 typedef union SHORT_UNION_{
     int16_t short_;
     unsigned char bytes_[2];
-} USHORT_UNION;
+} SHORT_UNION;
 
 typedef union USHORT_UNION_{
     uint16_t ushort_;
