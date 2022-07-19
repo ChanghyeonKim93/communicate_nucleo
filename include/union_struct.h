@@ -2,6 +2,11 @@
 #define _UNION_STRUCT_H_
 #include <iostream>
 
+typedef union SHORT_UNION_{
+    int16_t short_;
+    unsigned char bytes_[2];
+} USHORT_UNION;
+
 typedef union USHORT_UNION_{
     uint16_t ushort_;
     unsigned char bytes_[2];
