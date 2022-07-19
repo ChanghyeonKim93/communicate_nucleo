@@ -339,16 +339,16 @@ void SerialCommunicator::processTX(std::shared_future<void> terminate_signal){
         if(flag_send_packet_ready_){
             uint32_t len_tmp = len_packet_send_;
 
-            mutex_tx_->lock();
-            flag_send_packet_ready_ = false;
+            if( mutex_tx_->try_lock()) {
+                flag_send_packet_ready_ = false;
 
-            send_withChecksum(packet_send_, len_packet_send_);
-            len_packet_send_        = 0;
-            ++seq_send_;
+                send_withChecksum(packet_send_, len_packet_send_);
+                len_packet_send_        = 0;
+                ++seq_send_;
 
-            mutex_tx_->unlock();
-
-            // std::cout << "                                           TX Send:" << seq_send_ << ", len: " << len_tmp << std::endl;
+                mutex_tx_->unlock();
+                // std::cout << "                                           TX Send:" << seq_send_ << ", len: " << len_tmp << std::endl;
+            }
         }
 
 
@@ -422,6 +422,7 @@ void SerialCommunicator::send_withChecksum(const unsigned char* data, int len){
     // }
     // std::cout << "\n";
     serial_->write_some(boost::asio::buffer(buf_send_, idx));
+    // boost::asio::write(*serial_, boost::asio::buffer(buf_send_, idx));
     // std::cout << "write length : " << len +6 << std::endl;
 };
 
