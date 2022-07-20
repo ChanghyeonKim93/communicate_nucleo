@@ -198,6 +198,9 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
             // error code 4. Interrupted... 괜찮을걸? ㅋㅋ
             continue;
         }
+        else if(ec == boost::system::errc::no_such_file_or_directory){
+            std::cout << "WARNING    ! - serial port might be disconnected... error code : " << ec << std::endl; 
+        }
         else if(ec){
             // Error code는 boost::system::errc 에서 찾으면 된다.
             std::cout << "WARNING    ! - serial_->read_some(): error code : " << ec << std::endl;
