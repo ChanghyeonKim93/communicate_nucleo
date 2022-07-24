@@ -1,5 +1,7 @@
 # communicate_nucleo
-This repository is a  serial communication package between 'nucleo-l432kc and PC(USB)' for 8 PWM signals.
+This repository is a  serial communication package between 'nucleo board and PC(USB)'.
+
+This library uses CRC16-CCITT checksum test to verify the received and transmitted serial packets.
 
 Tested in:
 
