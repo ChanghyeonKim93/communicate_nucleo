@@ -327,7 +327,7 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
             }
         }
 
-        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(50));
+        std::future_status terminate_status = terminate_signal.wait_for(std::chrono::microseconds(10));
         if (terminate_status == std::future_status::ready) {
                     
 
