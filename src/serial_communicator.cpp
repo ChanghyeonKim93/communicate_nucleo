@@ -51,10 +51,11 @@ SerialCommunicator::~SerialCommunicator() {
 
 bool SerialCommunicator::isPacketReady(){
     bool res = false;
-    mutex_rx_->lock();
+    // mutex_rx_->lock();
     res = this->flag_packet_ready_;
-    mutex_rx_->unlock();
-    return res;
+    // std::cout << "ready in comm? : " << flag_packet_ready_ <<", " << res <<std::endl;
+    // mutex_rx_->unlock();
+    return this->flag_packet_ready_;
 };
 
 uint32_t SerialCommunicator::getPacket(unsigned char* buf){
@@ -253,6 +254,7 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
 
                                 mutex_rx_->unlock();
                                 flag_packet_ready_ = true;
+                                // std::cout << " flag packet ready?: " << flag_packet_ready_ << std::endl;
                             }
                             else{
                                 std::cout << "WARNING    ! - CRC ERROR !\n" << std::endl;
@@ -313,7 +315,7 @@ void SerialCommunicator::processRX(std::shared_future<void> terminate_signal){
                             flagStacking       = true;
                             idx_stk_   = 0;
 
-                            flag_packet_ready_ = false;
+                            // flag_packet_ready_ = false;
                         }
                         flagDLEFound = false; // STX 이든 아니든...
                     }

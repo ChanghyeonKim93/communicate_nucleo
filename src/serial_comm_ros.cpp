@@ -60,12 +60,15 @@ void SerialCommROS::getParameters(){
 void SerialCommROS::run(){
     ROS_INFO_STREAM("SerialCommROS - rosnode runs at {" << loop_frequency_ <<"} Hz\n");
     ros::Rate rate(loop_frequency_);
+    // ros::Rate rate(30000);
 
     ros::Time time_prev = ros::Time::now();
     ros::Time time_curr;
     while(ros::ok()){
-        if(isPacketReady()) {
+        bool is_ready = isPacketReady();
+        if(is_ready) {
             uint32_t len = getMessage(buf_recv_);
+            
             if(len > 0){
                 // publish the Received message from the Nucleo board.
                 for(int i = 0; i < len; ++i) msg_recv_.data.push_back(buf_recv_[i]);
@@ -81,7 +84,7 @@ void SerialCommROS::run(){
             else{
                 ROS_WARN_STREAM("In 'getMessage()', it returns len == 0.  An empty packet might be received.");
             }
-
+            
         }
         
         time_curr = ros::Time::now();
